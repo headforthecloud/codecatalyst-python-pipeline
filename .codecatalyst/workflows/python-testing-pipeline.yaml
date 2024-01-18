@@ -1,0 +1,122 @@
+Name: python-testing-pipeline
+
+Compute:
+  Type: EC2
+  # SharedInstance: true
+
+SchemaVersion: "1.0"
+
+# Optional - Set automatic triggers.
+Triggers:
+  - Type: Push
+
+Actions:
+  Linting:
+    Identifier: aws/build@v1.0.0
+    Inputs:
+      Sources:
+        - WorkflowSource
+    Configuration:
+      Steps:
+        - Run: |
+            echo "Installing pylint"
+            pip install --user pylint
+            export PATH=$PATH:~/.local/bin
+        - Run: |
+            echo "Check testresults folder exists"
+            if [ ! -d tests/testresults ]
+            then
+              mkdir tests/testresults
+            fi
+        - Run: |
+            echo "Linting Python"
+            pylint *py tests/*py > tests/testresults/pylint-output.py
+    Outputs:
+      Reports:
+        PyLintResults:
+          Format: PYLINTJSON
+          IncludePaths:
+            - tests/testresults/pylint-output.py
+          SuccessCriteria:
+            StaticAnalysisQuality:
+              Severity: HIGH
+              Number: 1
+            StaticAnalysisSecurity:
+              Severity: MEDIUM
+              Number: 1
+            StaticAnalysisBug:
+              Severity: MEDIUM
+              Number: 1
+
+  vuln_scan:
+    Identifier: aws/build@v1.0.0
+    Inputs:
+      Sources:
+        - WorkflowSource
+    Configuration:
+      Steps:
+        - Run: |
+            echo "Installing bandit"
+            pip install --user bandit bandit-sarif-formatter
+            export PATH=$PATH:~/.local/bin
+        - Run: |
+            echo "Check testresults folder exists"
+            if [ ! -d tests/testresults ]
+            then
+              mkdir tests/testresults
+            fi
+        - Run: |
+            echo "Running Bandit"
+            bandit -r . --format sarif --output tests/testresults/bandit-output.sarif --exit-zero
+    Outputs:
+      Reports:
+        BanditResults:
+          Format: SARIFSA
+          IncludePaths:
+            - tests/testresults/bandit-output.sarif
+          SuccessCriteria:
+            StaticAnalysisFinding:
+              Severity: MEDIUM
+              Number: 2
+
+
+  unit_tests:
+    Identifier: aws/managed-test@v1.0.0
+    Inputs:
+      Sources:
+        - WorkflowSource
+    Configuration:
+      Steps:
+        - Run: |
+            echo "Installing pytest"
+            pip install --user pytest pytest-cov
+            export PATH=$PATH:~/.local/bin
+        - Run: |
+            echo "Check testresults folder exists"
+            if [ ! -d tests/testresults ]
+            then
+              mkdir tests/testresults
+            fi
+        - Run: |
+            echo "Check for requirements"
+            if [ ! -r requirements.txt ]
+            then
+              pip install --user -r requirements.txt
+            fi
+        - Run: |
+            echo "Running PyTest"
+            python -m pytest
+    Outputs:
+      Reports:
+        PyTestResults:
+          Format: JUNITXML
+          IncludePaths:
+            - tests/testresults/junit.xml
+          SuccessCriteria:
+            PassRate: 100
+        CodeCoverage:
+          Format: COBERTURAXML
+          IncludePaths:
+            - tests/testresults/coverage.xml
+          SuccessCriteria:
+            LineCoverage: 80

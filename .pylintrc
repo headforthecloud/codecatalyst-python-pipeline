@@ -1,0 +1,10 @@
+[BASIC]
+good-names=i,j,k,x,y,ex,Run,_
+fail-under=0.1
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[REPORTS]
+output-format=json
