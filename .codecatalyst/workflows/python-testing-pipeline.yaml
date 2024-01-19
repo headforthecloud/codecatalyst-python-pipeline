@@ -1,12 +1,10 @@
+SchemaVersion: "1.0"
+
 Name: python-testing-pipeline
 
 Compute:
   Type: EC2
-  # SharedInstance: true
 
-SchemaVersion: "1.0"
-
-# Optional - Set automatic triggers.
 Triggers:
   - Type: Push
 
@@ -81,6 +79,8 @@ Actions:
 
 
   unit_tests:
+    DependsOn:
+      - Linting
     Identifier: aws/managed-test@v1.0.0
     Inputs:
       Sources:
@@ -99,7 +99,7 @@ Actions:
             fi
         - Run: |
             echo "Check for requirements"
-            if [ ! -r requirements.txt ]
+            if [ -r requirements.txt ]
             then
               pip install --user -r requirements.txt
             fi
